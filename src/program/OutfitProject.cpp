@@ -496,6 +496,7 @@ NiShape* OutfitProject::CreateNifShapeFromData(
 			case SKYRIMSE:
 			case SKYRIMVR: version = NiVersion::getSSE(); break;
 			case FO76: version = NiVersion::getFO76(); break;
+			case SF: version = NiVersion::getSF(); break;
 		}
 
 		workNif.Create(version);
@@ -1163,13 +1164,17 @@ void OutfitProject::GetLiveVerts(NiShape* shape, std::vector<Vector3>& outVerts,
 			AnimBone* animB = AnimSkeleton::getInstance().GetBonePtr(boneNamesIt.first);
 			if (animB) {
 				AnimWeight& animW = animSkin.boneWeights[boneNamesIt.second];
+
 				// Compose transform: skin -> (posed) bone -> global -> skin
-				MatTransform t = globalToSkin.ComposeTransforms(animB->xformPoseToGlobal.ComposeTransforms(animW.xformSkinToBone));
+				MatTransform transform = globalToSkin.ComposeTransforms(animB->xformPoseToGlobal.ComposeTransforms(animW.xformSkinToBone));
+				if (transform.IsNearlyEqualTo(MatTransform()))
+					transform.Clear();
+
 				// Add weighted contributions to vertex for this bone
 				for (auto& wIt : animW.weights) {
 					int ind = wIt.first;
 					float w = wIt.second;
-					pv[ind] += w * t.ApplyTransform(outVerts[ind]);
+					pv[ind] += w * transform.ApplyTransform(outVerts[ind]);
 					wv[ind] += w;
 				}
 			}
@@ -1182,6 +1187,10 @@ void OutfitProject::GetLiveVerts(NiShape* shape, std::vector<Vector3>& outVerts,
 			else if (std::fabs(wv[ind] - 1.0f) >= EPSILON) // If weights are bad for this vertex
 				pv[ind] /= wv[ind];
 			// else do nothing because weights totaled 1.
+
+			// New position is nearly equal to old position (reduce noise)
+			if (pv[ind].IsNearlyEqualTo(outVerts[ind]))
+				pv[ind] = outVerts[ind];
 		}
 
 		outVerts.swap(pv);
@@ -2445,6 +2454,19 @@ void OutfitProject::ApplyShapeMeshUndo(NiShape* shape, std::vector<float>& mask,
 	const std::vector<Vector3>* tangentsp = workNif.GetTangentsForShape(shape);
 	const std::vector<Vector3>* bitangentsp = workNif.GetBitangentsForShape(shape);
 	const std::vector<float>* eyeDatap = workNif.GetEyeDataForShape(shape);
+
+	if (uvsp && uvsp->empty())
+		uvsp = nullptr;
+	if (colorsp && colorsp->empty())
+		colorsp = nullptr;
+	if (normalsp && normalsp->empty())
+		normalsp = nullptr;
+	if (tangentsp && tangentsp->empty())
+		tangentsp = nullptr;
+	if (bitangentsp && bitangentsp->empty())
+		bitangentsp = nullptr;
+	if (eyeDatap && eyeDatap->empty())
+		eyeDatap = nullptr;
 
 	std::vector<Vector2> uvs;
 	std::vector<Color4> colors;
@@ -4565,8 +4587,11 @@ int OutfitProject::ImportNIF(const std::string& fileName, bool clear, const std:
 	else if (outfitName.empty())
 		outfitName = "New Outfit";
 
+	wxFileName file(fileName);
+	if (mBaseFile.empty())
+		mBaseFile = file.GetFullName();
+
 	if (clear) {
-		wxFileName file(fileName);
 		mGameFile = file.GetName();
 		mGamePath = file.GetPath();
 
@@ -4583,11 +4608,11 @@ int OutfitProject::ImportNIF(const std::string& fileName, bool clear, const std:
 		}
 	}
 
-	std::fstream file;
-	PlatformUtil::OpenFileStream(file, fileName, std::ios::in | std::ios::binary);
+	std::fstream fileStream;
+	PlatformUtil::OpenFileStream(fileStream, fileName, std::ios::in | std::ios::binary);
 
 	NifFile nif;
-	int error = nif.Load(file);
+	int error = nif.Load(fileStream);
 	if (error) {
 		if (error == 2) {
 			wxString errorText = wxString::Format(_("NIF version not supported!\n\nFile: %s\n%s"), fileName, nif.GetHeader().GetVersion().GetVersionInfo());
@@ -4763,6 +4788,8 @@ int OutfitProject::ExportShapeNIF(const std::string& fileName, const std::vector
 
 	NifFile clone(workNif);
 	ChooseClothData(clone);
+
+	clone.SetShapeOrder(owner->GetShapeList());
 
 	for (auto& s : clone.GetShapes())
 		if (find(exportShapes.begin(), exportShapes.end(), s->name.get()) == exportShapes.end())
@@ -5100,6 +5127,62 @@ int OutfitProject::ExportFBX(const std::string& fileName, const std::vector<NiSh
 	return fbxw.ExportScene(fileName);
 }
 
+std::unique_ptr<std::istream> OutfitProject::GetExternalGeometryStream(const std::string& dir, const std::string& path) const {
+	// Replace all backward slashes with one forward slash
+	std::string meshPath = std::regex_replace(path, std::regex("\\\\+"), "/");
+
+	// Remove everything before the first occurence of "/geometries/"
+	meshPath = std::regex_replace(meshPath, std::regex("^(.*?)/geometries/", std::regex_constants::icase), "");
+
+	// Remove all slashes from the front
+	meshPath = std::regex_replace(meshPath, std::regex("^/+"), "");
+
+	// If the path doesn't start with "geometries/", add it to the front
+	meshPath = std::regex_replace(meshPath, std::regex("^(?!^geometries/)", std::regex_constants::icase), "geometries/");
+
+	const std::string_view suffix = ".mesh";
+	bool endsWithSuffix = meshPath.size() >= suffix.size() && meshPath.compare(meshPath.size() - suffix.size(), suffix.size(), suffix) == 0;
+	if (!endsWithSuffix)
+		meshPath = meshPath + ".mesh";
+
+	// Check if loose file exists
+	std::string fullPath = dir + meshPath;
+	bool looseFileExists = std::filesystem::exists(fullPath);
+	if (looseFileExists) {
+		auto fileStream = std::make_unique<std::fstream>();
+		if (fileStream) {
+			PlatformUtil::OpenFileStream(*fileStream, fullPath, std::ios::in | std::ios::binary);
+			if (!fileStream->fail())
+				return fileStream;
+		}
+	}
+	else {
+		// Search for file in archives
+		wxMemoryBuffer data;
+		for (FSArchiveFile* archive : FSManager::archiveList()) {
+			if (archive) {
+				if (archive->hasFile(meshPath)) {
+					wxMemoryBuffer outData;
+					archive->fileContents(meshPath, outData);
+
+					if (!outData.IsEmpty()) {
+						data = std::move(outData);
+						break;
+					}
+				}
+			}
+		}
+
+		if (!data.IsEmpty()) {
+			std::string content((char*)data.GetData(), data.GetDataLen());
+			auto contentStream = std::make_unique<std::istringstream>(content, std::istringstream::binary);
+			if (contentStream && !contentStream->fail())
+				return contentStream;
+		}
+	}
+
+	return nullptr;
+}
 
 void OutfitProject::ValidateNIF(NifFile& nif) {
 	auto targetGame = (TargetGame)Config.GetIntValue("TargetGame");
@@ -5115,11 +5198,7 @@ void OutfitProject::ValidateNIF(NifFile& nif) {
 		case SKYRIMSE:
 		case SKYRIMVR: match = nif.GetHeader().GetVersion().IsSSE(); break;
 		case FO76: match = nif.GetHeader().GetVersion().IsFO76(); break;
-	}
-
-	if (nif.GetHeader().GetVersion().IsFO76()) {
-		wxLogWarning("NIFs of this version can not be resaved (will throw errors).");
-		return;
+		case SF: match = nif.GetHeader().GetVersion().IsSF(); break;
 	}
 
 	if (!match) {
@@ -5149,8 +5228,26 @@ void OutfitProject::ValidateNIF(NifFile& nif) {
 		}
 	}
 
-	for (auto& s : nif.GetShapes())
+	for (auto& s : nif.GetShapes()) {
+		uint8_t meshIndex = 0;
+		for (auto meshPath : nif.GetExternalGeometryPathRefs(s)) {
+			auto dataPath = Config["GameDataPath"];
+
+			auto meshStream = GetExternalGeometryStream(dataPath, meshPath.get());
+			if (!meshStream) {
+				wxMessageBox(wxString::Format(_("Unable to locate external mesh data for shape. Expected path: %s"), meshPath.get()),
+							 _("External Mesh Data Load Failure"),
+							 wxICON_WARNING,
+							 owner);
+				continue;
+			}
+
+			nif.LoadExternalShapeData(s, *meshStream, meshIndex);
+			meshIndex++;
+		}
+
 		nif.TriangulateShape(s);
+	}
 }
 
 void OutfitProject::ResetTransforms() {
@@ -5653,19 +5750,27 @@ void OutfitProject::GetAllPoseTransforms(NiShape* s, std::vector<MatTransform>& 
 
 // Note that ApplyTransformToOneVertexGeometry does not assume that t.rotation
 // is a proper rotation, so it can be used with GetAllPoseTransforms.
-void OutfitProject::ApplyTransformToOneVertexGeometry(UndoStateVertex& usv, const MatTransform& t) {
-	usv.pos = t.ApplyTransform(usv.pos);
-	usv.normal = t.ApplyTransformToDir(usv.normal);
+void OutfitProject::ApplyTransformToOneVertexGeometry(UndoStateVertex& usv, const MatTransform& transform) {
+	Vector3 newPos = transform.ApplyTransform(usv.pos);
+	if (newPos.IsNearlyEqualTo(usv.pos)) {
+		// New position is nearly equal to old position (reduce noise)
+		return;
+	}
+
+	usv.pos = newPos;
+	usv.normal = transform.ApplyTransformToDir(usv.normal);
 	usv.normal.Normalize();
-	usv.tangent = t.ApplyTransformToDir(usv.tangent);
+	usv.tangent = transform.ApplyTransformToDir(usv.tangent);
 	usv.tangent.Normalize();
-	usv.bitangent = t.ApplyTransformToDir(usv.bitangent);
+	usv.bitangent = transform.ApplyTransformToDir(usv.bitangent);
 	usv.bitangent.Normalize();
+
 	for (auto& usvsd : usv.diffs) {
 		SliderData& sd = activeSet[usvsd.sliderName];
 		if (sd.bUV || sd.bClamp || sd.bZap)
 			continue;
-		usvsd.diff = t.ApplyTransformToDiff(usvsd.diff);
+
+		usvsd.diff = transform.ApplyTransformToDiff(usvsd.diff);
 	}
 }
 

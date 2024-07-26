@@ -147,6 +147,7 @@ EditUV::EditUV(wxWindow* parent, NifFile* srcNif, NiShape* srcShape, Mesh* srcMe
 	canvas->SetCursor(wxStockCursor::wxCURSOR_CROSS);
 
 	xrc->AttachUnknownControl("uvGLView", canvas, this);
+	canvas->MSWDisableComposited(); // Fix stuttering from composited flag?
 }
 
 EditUV::~EditUV() {
@@ -507,6 +508,7 @@ void EditUVCanvas::OnShown() {
 	uvSurface.SetVertexColors();
 
 	InitMeshes();
+	Render();
 }
 
 void EditUVCanvas::OnPaint(wxPaintEvent& event) {

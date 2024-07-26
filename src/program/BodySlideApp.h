@@ -50,7 +50,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <wx/xrc/xmlres.h>
 
 
-enum TargetGame { FO3, FONV, SKYRIM, FO4, SKYRIMSE, FO4VR, SKYRIMVR, FO76, OB };
+enum TargetGame { FO3, FONV, SKYRIM, FO4, SKYRIMSE, FO4VR, SKYRIMVR, FO76, OB, SF };
 
 class BodySlideFrame;
 
@@ -140,8 +140,14 @@ public:
 	void PopulatePresetList(const std::string& select);
 	void PopulateOutfitList(const std::string& select);
 	void DisplayActiveSet();
+
+	void GetBuildSelection(BuildSelectionFile& file, BuildSelection& buildSel);
+
 	void UpdateConflictManager();
 	void SetDefaultBuildSelection();
+
+	bool UpdateZapChoices();
+	void SetZapChoice(const std::string& zap, bool choice);
 
 	int LoadSliderSets();
 	void RefreshOutfitList();
@@ -214,6 +220,36 @@ static const wxCmdLineEntryDesc g_cmdLineDesc[] = {{wxCMD_LINE_OPTION, "gbuild",
 #define SLIDER_LO 1
 #define SLIDER_HI 2
 
+class SliderCategoryUI {
+	bool isCreated = false;
+
+public:
+	bool isShown = false;
+	bool isEnabled = false;
+	bool oneSize = false;
+
+	std::string categoryName;
+	std::vector<std::string> sliderNames;
+
+	wxPanel* dummyPanel1 = nullptr;
+	wxCheckBox* check = nullptr;
+	wxStaticText* label = nullptr;
+	wxPanel* dummyPanel2 = nullptr;
+
+	SliderCategoryUI();
+
+	bool IsCreated() { return isCreated; }
+
+	bool Create(wxScrolledWindow* scrollWindow,
+				wxSizer* sliderLayout,
+				const std::string& name,
+				const std::vector<std::string>& sliders,
+				bool pEnabled = true,
+				bool pOneSize = false);
+	void Show(bool show = true);
+	void Destroy();
+};
+
 class SliderDisplay {
 	bool isCreated = false;
 
@@ -221,7 +257,11 @@ public:
 	bool isShown = false;
 	bool isZap = false;
 	bool oneSize = false;
+
 	std::string sliderName;
+	std::string displayName;
+	std::string categoryName;
+
 	wxStaticText* lblSliderLo = nullptr;
 	wxSlider* sliderLo = nullptr;
 	wxTextCtrl* sliderReadoutLo = nullptr;
@@ -236,7 +276,7 @@ public:
 	bool IsCreated() { return isCreated; }
 
 	bool Create(
-		wxScrolledWindow* scrollWindow, wxSizer* sliderLayout, const std::string& name, const std::string& display, int minValue, int maxValue, bool pIsZap, bool pOneSize = false);
+		wxScrolledWindow* scrollWindow, wxSizer* sliderLayout, const std::string& name, const std::string& category, const std::string& display, int minValue, int maxValue, bool pIsZap, bool pOneSize = false);
 	void Show(bool show = true);
 };
 
@@ -257,7 +297,7 @@ class BodySlideFrame : public wxFrame {
 public:
 	SliderDisplayPool sliderPool;
 	std::unordered_map<std::string, SliderDisplay*> sliderDisplays;
-	std::vector<wxWindow*> categoryWidgets;
+	std::unordered_map<std::string, SliderCategoryUI*> sliderCategories;
 
 	wxTimer delayLoad;
 
@@ -266,6 +306,11 @@ public:
 	wxButton* btnSavePreset = nullptr;
 	wxSearchCtrl* search = nullptr;
 	wxSearchCtrl* outfitsearch = nullptr;
+	wxSearchCtrl* sliderFilter = nullptr;
+
+	wxScrolledWindow* sliderScroll = nullptr;
+	wxFlexGridSizer* sliderLayout = nullptr;
+
 	wxCheckListBox* batchBuildList = nullptr;
 	wxMenu* fileCollisionMenu = nullptr;
 
@@ -274,12 +319,19 @@ public:
 
 	void HideSlider(SliderDisplay* slider);
 	void ShowLowColumn(bool show);
-	void AddCategorySliderUI(const wxString& name, bool show, bool oneSize);
-	void AddSliderGUI(wxScrolledWindow* scrollWindow, wxSizer* sliderLayout, const std::string& name, const std::string& display, bool isZap, bool oneSize = false);
+	void AddCategorySliderUI(const std::string& name, const std::vector<std::string>& sliders, bool enabled, bool oneSize);
+	void AddSliderGUI(const std::string& name, const std::string& display, const std::string& categoryName, bool isZap, bool oneSize = false);
 
 	SliderDisplay* GetSliderDisplay(const std::string& name) {
 		if (sliderDisplays.find(name) != sliderDisplays.end())
 			return sliderDisplays[name];
+
+		return nullptr;
+	}
+
+	SliderCategoryUI* GetSliderCategory(const std::string& name) {
+		if (sliderCategories.find(name) != sliderCategories.end())
+			return sliderCategories[name];
 
 		return nullptr;
 	}
@@ -293,6 +345,7 @@ public:
 	void PopulatePresetList(const wxArrayString& items, const wxString& selectItem);
 
 	void SetSliderPosition(const wxString& name, float newValue, short HiLo);
+	void DoFilterSliders();
 
 	int lastScroll = 0;
 
@@ -311,6 +364,8 @@ private:
 	void OnSliderReadoutChange(wxCommandEvent& event);
 	void OnSearchChange(wxCommandEvent& event);
 	void OnOutfitSearchChange(wxCommandEvent& event);
+
+	void OnSliderFilterChanged(wxCommandEvent&);
 
 	void OnZapCheckChanged(wxCommandEvent& event);
 	void OnCategoryCheckChanged(wxCommandEvent& event);

@@ -7,13 +7,16 @@ See the included LICENSE file
 
 #include "OutfitStudio.h"
 #include <wx/clrpicker.h>
+#include <wx/notebook.h>
 
 class ShapeProperties : public wxDialog {
 public:
-	ShapeProperties(wxWindow*, nifly::NifFile*, nifly::NiShape*);
+	ShapeProperties(wxWindow*, nifly::NifFile*, std::vector<nifly::NiShape*>);
 	~ShapeProperties();
 
 private:
+	wxNotebook* nbProperties = nullptr;
+
 	wxPanel* pgShader = nullptr;
 	wxStaticText* lbShaderName = nullptr;
 	wxTextCtrl* shaderName = nullptr;
@@ -26,6 +29,7 @@ private:
 	wxTextCtrl* emissiveMultiple = nullptr;
 	wxTextCtrl* alpha = nullptr;
 	wxCheckBox* vertexColors = nullptr;
+	wxCheckBox* doubleSided = nullptr;
 	wxButton* btnAddShader = nullptr;
 	wxButton* btnRemoveShader = nullptr;
 	wxButton* btnSetTextures = nullptr;
@@ -39,6 +43,7 @@ private:
 
 	wxButton* btnCopyShaderFromShape = nullptr;
 
+	wxPanel* pgGeometry = nullptr;
 	wxCheckBox* fullPrecision = nullptr;
 	wxCheckBox* subIndex = nullptr;
 	wxCheckBox* skinned = nullptr;
@@ -48,6 +53,7 @@ private:
 	wxPanel* pgExtraData = nullptr;
 	wxFlexGridSizer* extraDataGrid = nullptr;
 
+	wxPanel* pgCoordinates = nullptr;
 	wxTextCtrl* textScale = nullptr;
 	wxTextCtrl* textX = nullptr;
 	wxTextCtrl* textY = nullptr;
@@ -61,33 +67,32 @@ private:
 
 	OutfitStudioFrame* os = nullptr;
 	nifly::NifFile* nif = nullptr;
-	nifly::NiShape* shape = nullptr;
+	std::vector<nifly::NiShape*> shapes;
 
-	bool currentSubIndex = false;
-	bool currentDynamic = false;
-	bool currentVertexColors = false;
-	bool currentVertexAlpha = false;
+	bool confirmationAccepted = false;
+
+	bool ShowConfirmationDialog();
 
 	void GetShader();
 	void GetShaderType();
-	void AddShader();
-	void RemoveShader();
+	void AddShader(nifly::NiShape* shape);
+	void RemoveShader(nifly::NiShape* shape);
 
 	void GetTransparency();
-	void AddTransparency();
-	void RemoveTransparency();
+	void AddTransparency(nifly::NiShape* shape);
+	void RemoveTransparency(nifly::NiShape* shape);
 
 	void GetGeometry();
 
 	void GetExtraData();
-	void AddExtraData(nifly::NiExtraData* extraData, bool uiOnly = false);
-	void ChangeExtraDataType(int index);
+	void AddExtraData(nifly::NiShape* shape, nifly::NiExtraData* extraData, bool uiOnly = false);
+	void ChangeExtraDataType(nifly::NiShape* shape, int index);
 	void RemoveExtraData(int index);
 
 	void GetCoordTrans();
 	void OnTransChanged(wxCommandEvent&);
 
-	void AssignDefaultTexture();
+	void AssignDefaultTexture(nifly::NiShape* shape);
 	void RefreshMesh();
 	void ApplyChanges();
 

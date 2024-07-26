@@ -11,7 +11,7 @@
 				<option>1</option>
 				<flag>wxALL|wxEXPAND</flag>
 				<border>5</border>
-				<object class="wxNotebook">
+				<object class="wxNotebook" name="nbProperties">
 					<object class="notebookpage">
 						<label>Shader</label>
 						<object class="wxPanel" name="pgShader">
@@ -241,6 +241,23 @@
 													<flag>wxALL|wxEXPAND</flag>
 													<border>5</border>
 													<object class="wxCheckBox" name="vertexColors">
+														<checked>0</checked>
+													</object>
+												</object>
+												<object class="sizeritem">
+													<option>0</option>
+													<flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+													<border>5</border>
+													<object class="wxStaticText" name="lbDoubleSided">
+														<label>Double Sided</label>
+														<wrap>-1</wrap>
+													</object>
+												</object>
+												<object class="sizeritem">
+													<option>0</option>
+													<flag>wxALL|wxEXPAND</flag>
+													<border>5</border>
+													<object class="wxCheckBox" name="doubleSided">
 														<checked>0</checked>
 													</object>
 												</object>
@@ -477,6 +494,7 @@
 											<flag>wxALL|wxEXPAND</flag>
 											<border>5</border>
 											<object class="wxCheckBox" name="fullPrecision">
+												<style>wxCHK_3STATE</style>
 												<checked>0</checked>
 												<enabled>0</enabled>
 											</object>
@@ -495,6 +513,7 @@
 											<flag>wxALL|wxEXPAND</flag>
 											<border>5</border>
 											<object class="wxCheckBox" name="subIndex">
+												<style>wxCHK_3STATE</style>
 												<checked>0</checked>
 												<enabled>0</enabled>
 											</object>
@@ -513,6 +532,7 @@
 											<flag>wxALL|wxEXPAND</flag>
 											<border>5</border>
 											<object class="wxCheckBox" name="skinned">
+												<style>wxCHK_3STATE</style>
 												<checked>0</checked>
 											</object>
 										</object>
@@ -530,6 +550,7 @@
 											<flag>wxALL|wxEXPAND</flag>
 											<border>5</border>
 											<object class="wxCheckBox" name="dynamic">
+												<style>wxCHK_3STATE</style>
 												<checked>0</checked>
 											</object>
 										</object>

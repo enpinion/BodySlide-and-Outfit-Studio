@@ -50,7 +50,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <wx/msw/registry.h>
 #endif
 
-enum TargetGame { FO3, FONV, SKYRIM, FO4, SKYRIMSE, FO4VR, SKYRIMVR, FO76, OB };
+enum TargetGame { FO3, FONV, SKYRIM, FO4, SKYRIMSE, FO4VR, SKYRIMVR, FO76, OB, SF };
 
 
 class ShapeItemData : public wxTreeItemData {
@@ -854,7 +854,6 @@ public:
 	std::string activeSlider;
 	std::string lastActiveSlider;
 	bool bEditSlider = false;
-	std::string contextBone;
 	std::vector<int> triParts;	// the partition index for each triangle, or -1 for none
 	std::vector<int> triSParts; // the segment partition index for each triangle, or -1 for none
 
@@ -1233,6 +1232,7 @@ private:
 	void ToggleBoneState(wxTreeItemId firstItem = wxTreeItemId());
 	void OnBoneStateToggle(wxTreeEvent& event);
 	void OnBoneSelect(wxTreeEvent& event);
+	void OnBoneActivated(wxTreeEvent& event);
 	void OnBoneContext(wxTreeEvent& event);
 	void OnBoneTreeContext(wxCommandEvent& event);
 
@@ -1293,6 +1293,7 @@ private:
 	void OnSliderImportOBJ(wxCommandEvent& event);
 	void OnSliderImportOSD(wxCommandEvent& event);
 	void OnSliderImportTRI(wxCommandEvent& event);
+	void OnSliderImportMorphsSF(wxCommandEvent& event);
 	void OnSliderImportFBX(wxCommandEvent& event);
 	void OnSliderExportNIF(wxCommandEvent& event);
 	void OnSliderExportBSD(wxCommandEvent& event);
@@ -1320,6 +1321,7 @@ private:
 	void OnMoveShape(wxCommandEvent& event);
 	void OnScaleShape(wxCommandEvent& event);
 	void OnRotateShape(wxCommandEvent& event);
+	void OnInflateShape(wxCommandEvent& event);
 
 	void OnRenameShape(wxCommandEvent& event);
 	void OnSetReference(wxCommandEvent& event);
@@ -1337,7 +1339,7 @@ private:
 	void OnDeleteBone(wxCommandEvent& event);
 	void OnDeleteBoneFromSelected(wxCommandEvent& event);
 	void FillParentBoneChoice(wxDialog& dlg, const std::string& selBone = "");
-	void GetBoneDlgData(wxDialog& dlg, nifly::MatTransform& xform, std::string& parentBone);
+	void GetBoneDlgData(wxDialog& dlg, nifly::MatTransform& xform, std::string& parentBone, int& addCount);
 	void OnEditBone(wxCommandEvent& event);
 	void OnCopyBoneWeight(wxCommandEvent& event);
 	void OnCopySelectedWeight(wxCommandEvent& event);

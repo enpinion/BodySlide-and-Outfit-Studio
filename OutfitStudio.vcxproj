@@ -755,6 +755,7 @@
     <ClInclude Include="lib\gli\type.hpp" />
     <ClInclude Include="lib\gli\view.hpp" />
     <ClInclude Include="lib\LZ4F\lz4.h" />
+    <ClInclude Include="lib\LZ4F\lz4file.h" />
     <ClInclude Include="lib\LZ4F\lz4frame.h" />
     <ClInclude Include="lib\LZ4F\lz4frame_static.h" />
     <ClInclude Include="lib\LZ4F\lz4hc.h" />
@@ -801,6 +802,7 @@
     <ClInclude Include="src\files\MaterialFile.h" />
     <ClInclude Include="src\files\ObjFile.h" />
     <ClInclude Include="src\files\ResourceLoader.h" />
+    <ClInclude Include="src\files\SFMorphFile.h" />
     <ClInclude Include="src\files\TriFile.h" />
     <ClInclude Include="src\program\ConvertBodyReferenceDialog.h" />
     <ClInclude Include="src\program\EditUV.h" />
@@ -836,6 +838,7 @@
     <ClCompile Include="lib\gli\core\dummy.cpp" />
     <ClCompile Include="lib\gli\glm\detail\glm.cpp" />
     <ClCompile Include="lib\LZ4F\lz4.c" />
+    <ClCompile Include="lib\LZ4F\lz4file.c" />
     <ClCompile Include="lib\LZ4F\lz4frame.c" />
     <ClCompile Include="lib\LZ4F\lz4hc.c" />
     <ClCompile Include="lib\LZ4F\xxhash.c" />
@@ -877,6 +880,7 @@
     <ClCompile Include="src\files\MaterialFile.cpp" />
     <ClCompile Include="src\files\ObjFile.cpp" />
     <ClCompile Include="src\files\ResourceLoader.cpp" />
+    <ClCompile Include="src\files\SFMorphFile.cpp" />
     <ClCompile Include="src\files\TriFile.cpp" />
     <ClCompile Include="src\program\ConvertBodyReferenceDialog.cpp" />
     <ClCompile Include="src\program\EditUV.cpp" />

@@ -68,6 +68,7 @@ ObjImportDialog::ObjImportDialog(wxWindow* parent, const std::string& fileName, 
 	ConfigDialogUtil::LoadDialogChoiceIndex(OutfitStudioConfig, (*this), "OBJImport", "rotateZ");
 
 	xrc->AttachUnknownControl("glView", CreateCanvas(), this);
+	canvas->MSWDisableComposited(); // Fix stuttering from composited flag?
 }
 
 ObjImportDialog::~ObjImportDialog() {

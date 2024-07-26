@@ -68,6 +68,7 @@ FBXImportDialog::FBXImportDialog(wxWindow* parent, const std::string& fileName, 
 	ConfigDialogUtil::LoadDialogChoiceIndex(OutfitStudioConfig, (*this), "FBXImport", "rotateZ");
 
 	xrc->AttachUnknownControl("glView", CreateCanvas(), this);
+	canvas->MSWDisableComposited(); // Fix stuttering from composited flag?
 }
 
 FBXImportDialog::~FBXImportDialog() {
